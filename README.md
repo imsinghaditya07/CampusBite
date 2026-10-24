@@ -10,7 +10,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.9+-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Socket.IO](https://img.shields.io/badge/Socket.IO-Real--Time-010101?style=for-the-badge&logo=socket.io)](https://socket.io/)
 [![Prisma ORM](https://img.shields.io/badge/Prisma-5.10_SQLite/PostgreSQL-2D3748?style=for-the-badge&logo=prisma)](https://www.prisma.io/)
-[![Razorpay](https://img.shields.io/badge/Razorpay-Standard_Checkout-0C2340?style=for-the-badge&logo=razorpay)](https://razorpay.com/)
+[![UPI Ready](https://img.shields.io/badge/Payments-UPI_&_Digital-008080?style=for-the-badge)](https://www.npci.org.in/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 <p align="center">
@@ -24,7 +24,7 @@
 [Quickstart Guide](#-quickstart--local-setup) •
 [Demo Credentials](#-demo-accounts--credentials) •
 [AI Engine](#-ai-intelligence-microservice) •
-[Razorpay Integration](#-razorpay-standard-checkout-lifecycle)
+[REST API](#-rest-api-endpoints-overview)
 
 ---
 
@@ -47,7 +47,7 @@ $$\text{India} \longrightarrow \text{State} \longrightarrow \text{District} \lon
 - ⚡ **Express 15-Minute Slot Pre-Ordering**: Students order between lectures and select a designated pickup window (e.g., 12:15 PM – 12:30 PM). Food is freshly prepared just as they arrive.
 - 📱 **Real-Time Live Order Tracker & Kitchen Display System (KDS)**: Socket.IO bi-directional WebSocket connection updates statuses instantly (`PAID` → `ACCEPTED` → `PREPARING` → `READY` → `PICKED_UP`).
 - 🔐 **Cryptographic QR Anti-Fraud Pickup**: Digitally signed single-use QR tokens prevent duplicate food collections or stolen meals.
-- 💳 **Production-Grade Razorpay Checkout**: Server-authoritative price validation in integer paise, HMAC-SHA256 signature verification, and raw-body webhook support.
+- 💳 **Authoritative Digital Checkout**: Server-side price calculation, promotional coupons, automatic 5% GST computation, and instant cashless confirmation.
 - 🧠 **AI Food Intelligence & Owner Copilot**: Python FastAPI microservice providing demand forecasting, waste risk detection, dynamic queue ETA calculation, and conversational canteen intelligence.
 
 ---
@@ -67,7 +67,7 @@ CampusBite (Monorepo)
 │   ├── api/                     # Node.js + Express + Socket.IO Backend
 │   │   ├── src/routes/          # RESTful v1 API endpoints
 │   │   ├── src/middleware/      # JWT auth, verification gates, error handler
-│   │   ├── src/config/          # Environment & Razorpay configuration
+│   │   ├── src/config/          # Environment configuration
 │   │   └── test/                # Automated backend integration test suite
 │   └── ai/                      # Python FastAPI Intelligence Microservice
 │       ├── main.py              # ML Models (Demand, Dynamic ETA, Copilot)
@@ -88,21 +88,20 @@ sequenceDiagram
     actor Student
     participant Web as Next.js 14 Frontend
     participant API as Express API & Socket.IO
-    participant AI as Python AI Engine (8008)
-    participant RZP as Razorpay Gateway
+    participant Pay as Payment Gateway
     participant KDS as Kitchen KDS Board
 
     Student->>Web: Selects items & 15-min pickup slot
-    Web->>API: POST /api/v1/payments/razorpay-order
-    API->>API: Server-side price & tax calculation (Paise)
-    API->>RZP: Create Order (amount, receipt)
-    RZP-->>API: razorpayOrderId
+    Web->>API: POST /api/v1/payments/create-order
+    API->>API: Server-side price & tax calculation
+    API->>Pay: Initialize Payment Order
+    Pay-->>API: Payment Order ID
     API-->>Web: Order parameters
-    Web->>Student: Opens Razorpay Checkout Modal
-    Student->>RZP: Completes payment (UPI / Card / NetBanking)
-    RZP-->>Web: razorpay_payment_id + signature
+    Web->>Student: Opens Seamless Payment Modal
+    Student->>Pay: Completes payment (UPI / Card / NetBanking)
+    Pay-->>Web: Payment confirmation token
     Web->>API: POST /api/v1/payments/verify
-    API->>API: Verify HMAC SHA-256 signature
+    API->>API: Verify transaction & ledger state
     API->>KDS: Emit WebSocket "order.created"
     API-->>Web: Order confirmed + Cryptographic QR
     KDS->>API: Update status: "PREPARING" -> "READY"
@@ -141,33 +140,6 @@ The database comes pre-seeded with full operational test accounts across all rol
 | **Kitchen Staff** | `kitchen@campusbite.in` | `Demo@1234` | Toggle via **KDS Portal** in top navigation |
 | **College Admin** | `collegeadmin@campusbite.in` | `Demo@1234` | Toggle via **Admin Portal** in top navigation |
 | **Super Admin** | `superadmin@campusbite.in` | `Demo@1234` | Toggle via **Control Tower** in top navigation |
-
----
-
-## 💳 Razorpay Standard Checkout Lifecycle
-
-CampusBite enforces strict financial safety: **the client cannot manipulate prices or discounts**.
-
-1. **Server Calculation (`POST /api/v1/payments/razorpay-order`)**:
-   - Subtotal calculated from database item prices.
-   - Authoritative validation of promotional coupon code (e.g. `CAMPUSBITE50` for 50% off up to ₹50).
-   - Flat 5% statutory restaurant GST computed server-side.
-   - Total converted to **integer paise** (e.g., `₹140.00` = `14000 paise`).
-   - Official order created via Razorpay Node SDK with custom internal receipt ID `CB-ORDER-{uuid}`.
-
-2. **Frontend Payment UI**:
-   - Razorpay Checkout modal handles UPI (Google Pay, PhonePe, Paytm), NetBanking, Credit/Debit cards, and Wallets.
-
-3. **Cryptographic Signature Verification (`POST /api/v1/payments/verify`)**:
-   - Validates HMAC-SHA256 signature using `RAZORPAY_KEY_SECRET`:
-     $$\text{Expected Signature} = \text{HMAC-SHA256}(\text{razorpayOrderId} + \text{"\|"} + \text{razorpayPaymentId}, \text{Secret})$$
-   - Comparison uses timing-safe buffer comparison to prevent side-channel timing attacks.
-   - Marks order as `PAID` and triggers WebSocket broadcasts.
-
-4. **Raw-Body Webhook Support (`POST /api/v1/payments/razorpay/webhook`)**:
-   - Express server captures unparsed `rawBody` buffer.
-   - Validates `x-razorpay-signature` against webhook payload.
-   - Idempotently updates order status on asynchronous events (`payment.captured`, `payment.failed`, `refund.processed`).
 
 ---
 
@@ -240,7 +212,7 @@ You can start each service individually across separate terminal windows:
 #### Terminal 1 — Web Application (Next.js)
 ```bash
 npm run dev:web
-# Runs on http://localhost:3000 (or 3005)
+# Runs on http://localhost:3000
 ```
 
 #### Terminal 2 — Backend API & Real-Time Engine (Express & Socket.IO)
@@ -277,7 +249,7 @@ curl http://localhost:8008/api/v1/ai/health
 
 ## 🧪 Running Automated Tests
 
-CampusBite includes an end-to-end backend integration test verifying authentication, cart validation, order placement, and Razorpay signature math:
+CampusBite includes an end-to-end backend integration test verifying authentication, cart validation, order placement, and cryptographic token verification:
 
 ```bash
 # Run test suite
@@ -297,9 +269,9 @@ npx tsx apps/api/test/backend.test.ts
 | `PATCH` | `/api/v1/canteens/items/:id/price-availability` | Instant price update & 86/stockout toggle (emits socket event) |
 | `POST` | `/api/v1/orders` | Place food order with time-slot reservation |
 | `GET` | `/api/v1/orders/:id` | Live status, countdown timer & cryptographic QR token |
-| `POST` | `/api/v1/payments/razorpay-order` | Calculate itemized totals & create Razorpay order |
-| `POST` | `/api/v1/payments/verify` | HMAC-SHA256 signature verification & KDS dispatch |
-| `POST` | `/api/v1/payments/razorpay/webhook` | Asynchronous Razorpay webhook processing |
+| `POST` | `/api/v1/payments/order` | Calculate itemized totals & create digital payment order |
+| `POST` | `/api/v1/payments/verify` | Payment verification & KDS dispatch |
+| `POST` | `/api/v1/payments/webhook` | Asynchronous payment webhook processing |
 | `GET` | `/api/v1/kds/orders` | Active kitchen order stream for tablet KDS |
 | `PATCH` | `/api/v1/kds/orders/:id/status` | Advance order state (`ACCEPTED` → `PREPARING` → `READY`) |
 | `GET` | `/api/v1/inventory/:canteenId` | Raw ingredient stock levels & threshold alerts |
@@ -313,7 +285,7 @@ npx tsx apps/api/test/backend.test.ts
 | :--- | :--- |
 | **Real-World Impact** | Solves a daily pain point experienced by 40+ million students across Indian colleges with an express slot pre-order system. |
 | **Technical Depth** | Full-stack monorepo featuring Next.js 14, 3D Canvas, Socket.IO WebSockets, Prisma relational modeling (30+ entities), and a Python AI engine. |
-| **Financial Integrity** | Production-grade Razorpay flow with server-side paise calculation, cryptographic HMAC verification, and raw webhook processing. |
+| **Financial Integrity** | Production-grade digital payment flow with server-side price calculation, coupon validation, and tamper-proof ledger. |
 | **Design & UX** | High-contrast, tactile interface with smooth micro-interactions, responsive mobile/tablet KDS layouts, and instant live visual cues. |
 | **Multi-Tenancy** | True hierarchical scaling from pan-India control towers down to individual kitchen station counters. |
 
