@@ -1,0 +1,623 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model State {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String   @unique
+  cities    City[]
+  createdAt DateTime @default(now())
+}
+
+model City {
+  id           String       @id @default(uuid())
+  name         String
+  stateId      String
+  state        State        @relation(fields: [stateId], references: [id])
+  universities University[]
+  colleges     College[]
+  createdAt    DateTime     @default(now())
+}
+
+model University {
+  id        String    @id @default(uuid())
+  name      String
+  shortName String
+  cityId    String
+  city      City      @relation(fields: [cityId], references: [id])
+  colleges  College[]
+  createdAt DateTime  @default(now())
+}
+
+model College {
+  id                      String              @id @default(uuid())
+  name                    String
+  code                    String              @unique
+  universityId            String
+  university              University          @relation(fields: [universityId], references: [id])
+  cityId                  String
+  city                    City                @relation(fields: [cityId], references: [id])
+  address                 String
+  latitude                Float
+  longitude               Float
+  image                   String?
+  verificationRequirement String              @default("EMAIL_AND_ID") // EMAIL_ONLY, EMAIL_AND_ID, MANUAL_REVIEW
+  domains                 CollegeDomain[]
+  campuses                Campus[]
+  canteens                Canteen[]
+  students                StudentProfile[]
+  memberships             CollegeMembership[]
+  events                  CampusEvent[]
+  createdAt               DateTime            @default(now())
+}
+
+model CollegeDomain {
+  id        String   @id @default(uuid())
+  collegeId String
+  college   College  @relation(fields: [collegeId], references: [id])
+  domain    String   @unique // e.g. iitb.ac.in, iisc.ac.in
+  isPrimary Boolean  @default(true)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Campus {
+  id          String              @id @default(uuid())
+  name        String
+  collegeId   String
+  college     College             @relation(fields: [collegeId], references: [id])
+  canteens    Canteen[]
+  students    StudentProfile[]
+  memberships CollegeMembership[]
+  createdAt   DateTime            @default(now())
+}
+
+model CollegeRequest {
+  id           String   @id @default(uuid())
+  collegeName  String
+  university   String
+  cityName     String
+  stateName    String
+  contactEmail String
+  status       String   @default("PENDING")
+  createdAt    DateTime @default(now())
+}
+
+model User {
+  id                  String                @id @default(uuid())
+  email               String                @unique
+  passwordHash        String
+  name                String
+  phone               String
+  role                String                // STUDENT, CANTEEN_OWNER, KITCHEN_STAFF, COLLEGE_ADMIN, SUPER_ADMIN
+  avatar              String?
+  student             StudentProfile?
+  vendor              VendorProfile?
+  staff               StaffProfile?
+  memberships         CollegeMembership[]
+  verifications       StudentVerification[]
+  sessions            StudentSession[]
+  otpVerifications    OtpVerification[]
+  reviews             Review[]
+  complaints          Complaint[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+}
+
+model StudentProfile {
+  id                 String      @id @default(uuid())
+  userId             String      @unique
+  user               User        @relation(fields: [userId], references: [id])
+  collegeId          String
+  college            College     @relation(fields: [collegeId], references: [id])
+  campusId           String
+  campus             Campus      @relation(fields: [campusId], references: [id])
+  course             String      @default("B.Tech Computer Science")
+  department         String      @default("Computer Science & Engineering")
+  year               Int         @default(2)
+  semester           Int         @default(4)
+  rollNumber         String
+  dob                String?     // YYYY-MM-DD
+  institutionalEmail String?
+  profilePhoto       String?
+  dietaryPref        String      @default("VEG") // VEG, NON_VEG, EGG, JAIN
+  allergies          String?
+  wallet             CampusWallet?
+  mealPlans          MealPlan[]
+  orders             Order[]
+  createdAt          DateTime    @default(now())
+}
+
+model CollegeMembership {
+  id                 String               @id @default(uuid())
+  userId             String
+  user               User                 @relation(fields: [userId], references: [id])
+  collegeId          String
+  college            College              @relation(fields: [collegeId], references: [id])
+  campusId           String
+  campus             Campus               @relation(fields: [campusId], references: [id])
+  studentId          String               // Roll / Student ID
+  status             String               @default("ACTIVE") // PENDING, ACTIVE, SUSPENDED, REJECTED
+  verifiedAt         DateTime?
+  verificationMethod String               @default("COLLEGE_EMAIL_AND_ID")
+  verifications      StudentVerification[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@unique([userId, collegeId])
+}
+
+model StudentVerification {
+  id                  String                @id @default(uuid())
+  userId              String
+  user                User                  @relation(fields: [userId], references: [id])
+  collegeMembershipId String
+  membership          CollegeMembership     @relation(fields: [collegeMembershipId], references: [id])
+  emailVerified       Boolean               @default(false)
+  idCardVerified      Boolean               @default(false)
+  status              String                @default("UNVERIFIED") // UNVERIFIED, EMAIL_VERIFIED, ID_PENDING, UNDER_REVIEW, COLLEGE_VERIFIED, REJECTED, SUSPENDED
+  verificationMethod  String                @default("EMAIL_AND_ID")
+  reviewedBy          String?
+  reviewedAt          DateTime?
+  rejectionReason     String?
+  documents           VerificationDocument[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+}
+
+model VerificationDocument {
+  id             String              @id @default(uuid())
+  verificationId String
+  verification   StudentVerification @relation(fields: [verificationId], references: [id])
+  type           String              @default("COLLEGE_ID_CARD") // COLLEGE_ID_CARD, ADMISSION_LETTER, FEE_RECEIPT
+  storageKey     String
+  fileUrl        String
+  mimeType       String
+  fileSize       Int
+  status         String              @default("PENDING") // PENDING, VERIFIED, REJECTED
+  uploadedAt     DateTime            @default(now())
+  verifiedAt     DateTime?
+  deletedAt      DateTime?
+}
+
+model OtpVerification {
+  id           String    @id @default(uuid())
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id])
+  email        String
+  purpose      String    @default("EMAIL_VERIFICATION") // EMAIL_VERIFICATION, PHONE_VERIFICATION, PASSWORD_RESET
+  codeHash     String
+  expiresAt    DateTime
+  attemptCount Int       @default(0)
+  verifiedAt   DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model StudentSession {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  tokenHash    String
+  deviceInfo   String   // e.g. "Chrome · macOS"
+  ipAddress    String   @default("127.0.0.1")
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+}
+
+model VendorProfile {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id])
+  canteenId      String?   @unique
+  canteen        Canteen?  @relation(fields: [canteenId], references: [id])
+  businessRegNo  String?
+  gstNo          String?
+  createdAt      DateTime  @default(now())
+}
+
+model StaffProfile {
+  id           String          @id @default(uuid())
+  userId       String          @unique
+  user         User            @relation(fields: [userId], references: [id])
+  canteenId    String
+  canteen      Canteen         @relation(fields: [canteenId], references: [id])
+  stationId    String?
+  station      KitchenStation? @relation(fields: [stationId], references: [id])
+  shift        String          @default("MORNING")
+  createdAt    DateTime        @default(now())
+}
+
+model Canteen {
+  id                 String           @id @default(uuid())
+  name               String
+  slug               String           @unique
+  collegeId          String
+  college            College          @relation(fields: [collegeId], references: [id])
+  campusId           String
+  campus             Campus           @relation(fields: [campusId], references: [id])
+  image              String
+  description        String
+  rating             Float            @default(4.5)
+  isVegOnly          Boolean          @default(false)
+  status             String           @default("ACTIVE") // ACTIVE, BUSY, INACTIVE
+  prepTimeAvgMinutes Int              @default(12)
+  crowdLevel         String           @default("LOW") // LOW, MEDIUM, HIGH
+  latitude           Float
+  longitude          Float
+  vendor             VendorProfile?
+  staff              StaffProfile[]
+  stations           KitchenStation[]
+  counters           PickupCounter[]
+  categories         Category[]
+  foodItems          FoodItem[]
+  ingredients        Ingredient[]
+  suppliers          Supplier[]
+  pickupSlots        PickupSlot[]
+  orders             Order[]
+  coupons            Coupon[]
+  reviews            Review[]
+  complaints         Complaint[]
+  aiPredictions      DemandPrediction[]
+  wastePredictions   WastePrediction[]
+  aiInsights         AIInsight[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model KitchenStation {
+  id        String         @id @default(uuid())
+  canteenId String
+  canteen   Canteen        @relation(fields: [canteenId], references: [id])
+  name      String
+  type      String         @default("MAIN") // MAIN, BEVERAGE, FAST_FOOD, DESSERT, SOUTH_INDIAN, NORTH_INDIAN
+  staff     StaffProfile[]
+  createdAt DateTime       @default(now())
+}
+
+model PickupCounter {
+  id        String   @id @default(uuid())
+  canteenId String
+  canteen   Canteen  @relation(fields: [canteenId], references: [id])
+  code      String   // Counter A, Counter B, Express Counter
+  name      String
+  location  String
+  orders    Order[]
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id           String     @id @default(uuid())
+  canteenId    String
+  canteen      Canteen    @relation(fields: [canteenId], references: [id])
+  name         String
+  displayOrder Int        @default(1)
+  icon         String     @default("utensils")
+  foodItems    FoodItem[]
+  createdAt    DateTime   @default(now())
+}
+
+model FoodItem {
+  id               String              @id @default(uuid())
+  canteenId        String
+  canteen          Canteen             @relation(fields: [canteenId], references: [id])
+  categoryId       String
+  category         Category            @relation(fields: [categoryId], references: [id])
+  name             String
+  description      String
+  price            Float
+  isVeg            Boolean             @default(true)
+  isAvailable      Boolean             @default(true)
+  rating           Float               @default(4.6)
+  prepTimeMinutes  Int                 @default(10)
+  image            String
+  calories         Int?                @default(250)
+  protein          Float?              @default(8.5)
+  carbs            Float?              @default(32.0)
+  fat              Float?              @default(9.0)
+  spiceLevel       String              @default("MEDIUM") // LOW, MEDIUM, HIGH
+  customizations   FoodCustomization[]
+  recipes          Recipe[]
+  orderItems       OrderItem[]
+  demandPredictions DemandPrediction[]
+  wastePredictions WastePrediction[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+model FoodCustomization {
+  id          String   @id @default(uuid())
+  foodItemId  String
+  foodItem    FoodItem @relation(fields: [foodItemId], references: [id])
+  name        String
+  optionsJson String   // JSON string of [{ name: string, price: number }]
+  isRequired  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Ingredient {
+  id           String     @id @default(uuid())
+  canteenId    String
+  canteen      Canteen    @relation(fields: [canteenId], references: [id])
+  name         String
+  currentStock Float
+  unit         String     // kg, grams, liters, units
+  minStock     Float
+  costPerUnit  Float
+  supplierId   String?
+  supplier     Supplier?  @relation(fields: [supplierId], references: [id])
+  recipes      Recipe[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Recipe {
+  id               String     @id @default(uuid())
+  foodItemId       String
+  foodItem         FoodItem   @relation(fields: [foodItemId], references: [id])
+  ingredientId     String
+  ingredient       Ingredient @relation(fields: [ingredientId], references: [id])
+  quantityRequired Float
+}
+
+model Supplier {
+  id          String       @id @default(uuid())
+  canteenId   String
+  canteen     Canteen      @relation(fields: [canteenId], references: [id])
+  name        String
+  contactName String
+  phone       String
+  email       String
+  gstNo       String?
+  ingredients Ingredient[]
+  createdAt   DateTime     @default(now())
+}
+
+model PickupSlot {
+  id            String   @id @default(uuid())
+  canteenId     String
+  canteen       Canteen  @relation(fields: [canteenId], references: [id])
+  startTime     String   // e.g. 12:00
+  endTime       String   // e.g. 12:15
+  maxOrders     Int      @default(25)
+  currentOrders Int      @default(0)
+  isActive      Boolean  @default(true)
+  orders        Order[]
+  createdAt     DateTime @default(now())
+}
+
+model Order {
+  id                  String          @id @default(uuid())
+  orderNumber         String          @unique
+  studentId           String
+  student             StudentProfile  @relation(fields: [studentId], references: [id])
+  canteenId           String
+  canteen             Canteen         @relation(fields: [canteenId], references: [id])
+  slotId              String?
+  slot                PickupSlot?     @relation(fields: [slotId], references: [id])
+  counterId           String?
+  counter             PickupCounter?  @relation(fields: [counterId], references: [id])
+  status              String          @default("CREATED") // CREATED, PAYMENT_PENDING, PAID, ACCEPTED, REJECTED, QUEUED, PREPARING, READY, PICKED_UP, COMPLETED, CANCELLED
+  orderType           String          @default("PRE_ORDER") // PRE_ORDER, WALK_IN
+  totalAmount         Float
+  discountAmount      Float           @default(0)
+  taxAmount           Float           @default(0)
+  finalAmount         Float
+  qrCodeToken         String          @unique
+  specialInstructions String?
+  queuePosition       Int             @default(1)
+  estimatedReadyTime  String?
+  items               OrderItem[]
+  payment             Payment?
+  refund              Refund?
+  qrToken             QRToken?
+  review              Review?
+  complaint           Complaint?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+}
+
+model OrderItem {
+  id                 String   @id @default(uuid())
+  orderId            String
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  foodItemId         String
+  foodItem           FoodItem @relation(fields: [foodItemId], references: [id])
+  quantity           Int
+  unitPrice          Float
+  totalPrice         Float
+  customizationsJson String?  // JSON string of selected options
+}
+
+model Payment {
+  id               String   @id @default(uuid())
+  orderId          String   @unique
+  order            Order    @relation(fields: [orderId], references: [id])
+  razorpayOrderId  String   @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+  amount           Float
+  currency         String   @default("INR")
+  status           String   @default("PENDING") // PENDING, SUCCESS, FAILED, REFUNDED
+  paymentMethod    String   @default("UPI") // UPI, CARD, NETBANKING, WALLET
+  refund           Refund?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Refund {
+  id          String   @id @default(uuid())
+  paymentId   String   @unique
+  payment     Payment  @relation(fields: [paymentId], references: [id])
+  orderId     String   @unique
+  order       Order    @relation(fields: [orderId], references: [id])
+  amount      Float
+  reason      String
+  status      String   @default("REQUESTED") // REQUESTED, PROCESSED, FAILED
+  createdAt   DateTime @default(now())
+}
+
+model QRToken {
+  id        String   @id @default(uuid())
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id])
+  token     String   @unique
+  isUsed    Boolean  @default(false)
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Coupon {
+  id            String   @id @default(uuid())
+  canteenId     String
+  canteen       Canteen  @relation(fields: [canteenId], references: [id])
+  code          String   @unique
+  discountType  String   @default("PERCENTAGE") // PERCENTAGE, FLAT
+  discountValue Float
+  minOrderValue Float    @default(0)
+  maxDiscount   Float?
+  validFrom     DateTime
+  validUntil    DateTime
+  isActive      Boolean  @default(true)
+  usageLimit    Int      @default(100)
+  createdAt     DateTime @default(now())
+}
+
+model Review {
+  id            String   @id @default(uuid())
+  orderId       String   @unique
+  order         Order    @relation(fields: [orderId], references: [id])
+  studentId     String
+  user          User     @relation(fields: [studentId], references: [id])
+  canteenId     String
+  canteen       Canteen  @relation(fields: [canteenId], references: [id])
+  foodRating    Float
+  serviceRating Float
+  comment       String?
+  createdAt     DateTime @default(now())
+}
+
+model Complaint {
+  id          String   @id @default(uuid())
+  orderId     String   @unique
+  order       Order    @relation(fields: [orderId], references: [id])
+  studentId   String
+  user        User     @relation(fields: [studentId], references: [id])
+  canteenId   String
+  canteen     Canteen  @relation(fields: [canteenId], references: [id])
+  category    String   // LATE_ORDER, WRONG_ITEM, QUALITY, PAYMENT
+  description String
+  status      String   @default("OPEN") // OPEN, IN_REVIEW, RESOLVED, CLOSED
+  response    String?
+  createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String   // ORDER_UPDATE, PROMO, ALERT
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model CampusEvent {
+  id          String   @id @default(uuid())
+  collegeId   String
+  college     College  @relation(fields: [collegeId], references: [id])
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  eventType   String   // FEST, SPORTS, EXAM, SEMINAR
+  createdAt   DateTime @default(now())
+}
+
+model MealPlan {
+  id             String         @id @default(uuid())
+  studentId      String
+  student        StudentProfile @relation(fields: [studentId], references: [id])
+  planType       String         // MONTHLY_LUNCH, COMBINED_FULL
+  totalMeals     Int
+  mealsRemaining Int
+  startDate      DateTime
+  endDate        DateTime
+  status         String         @default("ACTIVE")
+  createdAt      DateTime       @default(now())
+}
+
+model CampusWallet {
+  id           String             @id @default(uuid())
+  studentId    String             @unique
+  student      StudentProfile     @relation(fields: [studentId], references: [id])
+  balance      Float              @default(500.0)
+  currency     String             @default("INR")
+  transactions WalletTransaction[]
+  updatedAt    DateTime           @updatedAt
+}
+
+model WalletTransaction {
+  id          String       @id @default(uuid())
+  walletId    String
+  wallet      CampusWallet @relation(fields: [walletId], references: [id])
+  amount      Float
+  type        String       // CREDIT, DEBIT
+  description String
+  referenceId String?
+  createdAt   DateTime     @default(now())
+}
+
+model DemandPrediction {
+  id             String    @id @default(uuid())
+  canteenId      String
+  canteen        Canteen   @relation(fields: [canteenId], references: [id])
+  foodItemId     String
+  foodItem       FoodItem  @relation(fields: [foodItemId], references: [id])
+  date           String
+  predictedCount Int
+  confidenceScore Float   @default(0.92)
+  createdAt      DateTime  @default(now())
+}
+
+model WastePrediction {
+  id                String   @id @default(uuid())
+  canteenId         String
+  canteen           Canteen  @relation(fields: [canteenId], references: [id])
+  foodItemId        String
+  foodItem          FoodItem @relation(fields: [foodItemId], references: [id])
+  date              String
+  wasteRiskLevel    String   // LOW, MEDIUM, HIGH
+  recommendedAction String
+  createdAt         DateTime @default(now())
+}
+
+model AIInsight {
+  id          String   @id @default(uuid())
+  canteenId   String
+  canteen     Canteen  @relation(fields: [canteenId], references: [id])
+  title       String
+  insightText String
+  category    String   // REVENUE, WASTE, INVENTORY, COMBO
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String
+  resource    String
+  detailsJson String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+}
