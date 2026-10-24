@@ -117,7 +117,7 @@ export default function Footer() {
         <div className="pt-6 border-t border-[#E8E8E3] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-[#6B6B6B]">
           <p>© 2026 CampusBite Operating Systems Inc. All rights reserved.</p>
           <p className="text-[10px] text-[#6B6B6B]">
-            Platform Architect: <span className="font-semibold text-[#171717]">Anand Kumar Jha</span> (<a href="mailto:an91an99jha@gmail.com" className="hover:underline">an91an99jha@gmail.com</a>)
+            Crafted with ❤️ by <span className="font-semibold text-[#171717]">Team Byte Breaker</span>: Aditya Singh · Anand Kumar Jha · Rishabh Kumar
           </p>
         </div>
 

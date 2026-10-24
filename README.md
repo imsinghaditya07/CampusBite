@@ -11,10 +11,12 @@
 [![Socket.IO](https://img.shields.io/badge/Socket.IO-Real--Time-010101?style=for-the-badge&logo=socket.io)](https://socket.io/)
 [![Prisma ORM](https://img.shields.io/badge/Prisma-5.10_SQLite/PostgreSQL-2D3748?style=for-the-badge&logo=prisma)](https://www.prisma.io/)
 [![UPI Ready](https://img.shields.io/badge/Payments-UPI_&_Digital-008080?style=for-the-badge)](https://www.npci.org.in/)
+[![Team Byte Breaker](https://img.shields.io/badge/Team-Byte_Breaker-FF5722?style=for-the-badge)](https://github.com/imsinghaditya07/CampusBite)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 <p align="center">
   <b>A comprehensive, high-throughput food operations ecosystem designed specifically for the Indian higher education sector.</b><br/>
+  <i>Built by <b>Team Byte Breaker</b> for high-impact campus dining transformation.</i><br/>
   Solves the 15-minute recess bottleneck across universities with real-time slot scheduling, interactive 3D UI, tablet Kitchen Display Systems, AI-powered demand forecasting, and cryptographic QR order collection.
 </p>
 
@@ -24,6 +26,7 @@
 [Quickstart Guide](#-quickstart--local-setup) •
 [Demo Credentials](#-demo-accounts--credentials) •
 [AI Engine](#-ai-intelligence-microservice) •
+[Team Byte Breaker](#-team-byte-breaker) •
 [REST API](#-rest-api-endpoints-overview)
 
 ---
@@ -291,8 +294,20 @@ npx tsx apps/api/test/backend.test.ts
 
 ---
 
+## 👥 Team Byte Breaker
+
+Proudly developed for the Hackathon by **Team Byte Breaker**:
+
+| Team Member | Role & Key Contributions | Contact / Profile |
+| :--- | :--- | :--- |
+| 🧑‍💻 **Aditya Singh** | Full-Stack Engineering, Monorepo Architecture, Socket.IO WebSockets & Cloud Setup | [@imsinghaditya07](https://github.com/imsinghaditya07) |
+| 🧑‍💻 **Anand Kumar Jha** | Platform Architecture, Database Modeling, Security & Core API Infrastructure | [@anandkumarjha](https://github.com/) |
+| 🧑‍💻 **Rishabh Kumar** | Frontend Experience, AI Microservice Intelligence & Dynamic Queue Modeling | [@rishabhkumar](https://github.com/) |
+
+---
+
 ## 📄 License & Attribution
 
 This project is open-source under the [MIT License](LICENSE).
 
-Developed with ❤️ for Indian campus dining innovation.
+Developed with ❤️ by **Team Byte Breaker** (Aditya Singh, Anand Kumar Jha, Rishabh Kumar) for Indian campus dining innovation.
